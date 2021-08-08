@@ -1,5 +1,5 @@
 <?php
-namespace Kaushal\Crud;
+namespace Kaushalmaurya\Crud;
 use Illuminate\Support\ServiceProvider;
 Class CrudServiceProvider extends ServiceProvider{
 

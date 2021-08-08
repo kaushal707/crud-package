@@ -1,16 +1,16 @@
 {
-    "name": "kaushal/crud",
+    "name": "kaushalmaurya/crud",
     "description": "This will generate whole crud opration",
     "type": "library",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Kaushal\\Crud\\": "src/"
+            "Kaushalmaurya\\Crud\\": "src/"
         }
     },
     "authors": [
         {
-            "name": "kaushal",
+            "name": "kaushal maurya",
             "email": "kaushalmaurya707@gmail.com"
         }
     ],

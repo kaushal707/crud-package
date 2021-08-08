@@ -1,6 +1,6 @@
 <?php
 
-namespace Kaushal\Crud\Http\Controllers;
+namespace Kaushalmaurya\Crud\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 

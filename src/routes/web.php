@@ -1,5 +1,5 @@
 <?php
-Route::group(['namespace' => 'Kaushal\Crud\Http\Controllers'], function(){
+Route::group(['namespace' => 'Kaushalmaurya\Crud\Http\Controllers'], function(){
 
     Route::get('crud', function(){
         return view('crud::createCrud');
