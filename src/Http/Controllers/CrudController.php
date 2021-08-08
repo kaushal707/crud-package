@@ -8,9 +8,6 @@ class CrudController extends Controller
 {
 
    public function GenerateCrud(Request $request){
-    
-   
-    
 
 		$crudName = $request->crudName;
 		$fields = $request->fields;
