@@ -1,52 +1,83 @@
 <?php
 
-namespace Kaushalmaurya\Crud\Http\Controllers;
+namespace Kaushal\Crud\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class CrudController extends Controller
 {
 
-   public function GenerateCrud(Request $request){
+public function GenerateCrud(Request $request){
 
+	  $basePath = base_path();
 		$crudName = $request->crudName;
-		$fields = $request->fields;
+	 	$fields = $request->fields;
+    $Migrate = $request->run_migration;
 
 		$crudName = str_replace(' ', '', $crudName);
 		$crudName = ucwords(strtolower($crudName));
 	  $lastChar =	substr($crudName, -1);
-        if($lastChar == "s"){
+    if($lastChar == "s"){
 		  $crudName = substr_replace($crudName ,"",-1);
 		}
     
-    $allFields = explode(',',$fields);
+    try {
+      $allFields = explode(',',$fields);
+   
+      foreach($allFields as $key => $value){
+        $fieldsAndDataType  =  explode('#', $value); 
+        $tableFields[$fieldsAndDataType[0]] = $fieldsAndDataType[1];
+      }
 
-    foreach($allFields as $key =>$value){
-      $tableFields[$value] = "string";
+    } catch (\Throwable $th) {
+     return $messages['FieldsError'] = "Entered table fields does not match the requirement";
+    }
+    
+    
+    $messages['Modeloutput'] = $this->MakeModel($basePath, $crudName);
+    $date = date('y-m-d');
+    $date = explode('-', $date);
+    $migration_file = $date[0] ."_". $date[1] ."_".$date[2]."_".rand()."_create_".strtolower($crudName)."s_table";
+    $messages['Migration'] =  $this->MakeMigration($basePath, $tableFields, $crudName, $migration_file);
+     
+    if($Migrate == '1'){
+      $messages['Migrationoutput'] = $this->Migrate( $basePath, $migration_file);
     }
 
-	//Get the Base Path 
-	$basePath = base_path();
+    $messages['Controlleroutput'] =  $this->MakeResourceController($basePath, $tableFields, $crudName );
+    $messages['ViewMessage'] =  $this->MakeViewsFiles($basePath, $tableFields, $crudName);
+    $messages['RouteMessage'] = $this->MakeRoute($basePath, $crudName);
+    return view('crud::createCrud', ['messages' => $messages ] );
+
+  }
 
 
 /*|=============================================================================|
   |                            Make A Model                                     |
   |=============================================================================|
 */
-		 $ModelCommand = "php artisan make:model ".$crudName;
-		 $Modeloutput = shell_exec('cd '.$basePath.' && '.$ModelCommand);
-		 $messages['Modeloutput'] = $Modeloutput;
 
-		
+public function MakeModel($basePath, $crudName ){
+
+  $ModelCommand = "php artisan make:model ".$crudName;
+  $Modeloutput = shell_exec('cd '.$basePath.' && '.$ModelCommand);
+  return  $Modeloutput;
+
+}
+
+
 /*|=============================================================================|
   |                            Make A Migration Table                           |
   |=============================================================================|
 */
-		 $tableData = "";
-		 foreach($tableFields as $column => $datatype){
-			$tableData .= "$"."table->".$datatype."('".$column."');".PHP_EOL;
-		  }
-		  
+
+public function MakeMigration($basePath, $tableFields, $crudName,$migration_file){
+
+$tableData = "";
+foreach($tableFields as $column => $datatype){
+ $tableData .= "$"."table->".$datatype."('".$column."');".PHP_EOL;
+ }
+ 
 $migrationText="<?php
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
@@ -54,64 +85,74 @@ use Illuminate\Database\Migrations\Migration;
 
 class Create".$crudName."sTable extends Migration
 {
-		/**
-		* Run the migrations.
-		*
-		* @return void
-		*/
-		public function up()
-		 {
-		   Schema::create('".strtolower($crudName)."s', function (Blueprint "."$"."table) {
-			 "."$"."table->increments('id');
-			 ".$tableData."
-			  "."$"."table->timestamps();
-			 });
-		 }
-		  
-		/**
-		* Reverse the migrations.
-		*
-	    * @return void
-		*/
-		public function down()
-		{
-				  Schema::dropIfExists('".strtolower($crudName)."s');
-		}
+/**
+* Run the migrations.
+*
+* @return void
+*/
+public function up()
+{
+  Schema::create('".strtolower($crudName)."s', function (Blueprint "."$"."table) {
+  "."$"."table->increments('id');
+  ".$tableData."
+   "."$"."table->timestamps();
+  });
 }
-
+ 
+/**
+* Reverse the migrations.
+*
+ * @return void
+*/
+public function down()
+{
+     Schema::dropIfExists('".strtolower($crudName)."s');
+}
+}
 ";
 
-  $date = date('y-m-d');
-  $date = explode('-', $date);
-  $migration_file = $date[0] ."_". $date[1] ."_".$date[2]."_".rand()."_create_".strtolower($crudName)."s_table";
-	$filePath = $basePath."/database/migrations/".$migration_file.".php";
-  $migrationFile = fopen($filePath, "w") or die("Unable to open file!");
-	fwrite($migrationFile, $migrationText);
-  fclose($migrationFile);
-	$messages['Migration'] = "database/migrations/create_".$crudName."s_table.php created successfully";
+
+$filePath = $basePath."/database/migrations/".$migration_file.".php";
+$migrationFile = fopen($filePath, "w") or die("Unable to open file!");
+fwrite($migrationFile, $migrationText);
+fclose($migrationFile);
+ return "database/migrations/create_".$crudName."s_table.php created successfully";
+
+}
+
 
 /*|=============================================================================|
   |                            Run the Migration                                |
   |=============================================================================|
 */
-	$MigrateCommand  = "php artisan migrate:refresh --path=/database/migrations/".$migration_file.".php";
-	$Migrationoutput = shell_exec('cd '.$basePath.' && '.$MigrateCommand); 
-	$messages['Migrationoutput'] =  $Migrationoutput;
-		
+
+public function Migrate( $basePath, $migration_file){
+
+$MigrateCommand  = "php artisan migrate:refresh --path=/database/migrations/".$migration_file.".php";
+$Migrationoutput = shell_exec('cd '.$basePath.' && '.$MigrateCommand); 
+return  $Migrationoutput;
+}
+
+
 /*|=============================================================================
   |                            Create A Resource Controller                    |
   |=============================================================================
 */
 
- $FieldsToValidate= "";
+
+public function MakeResourceController($basePath, $tableFields, $crudName ){
+
+
+$FieldsToValidate= "";
 foreach($tableFields as $column => $datatype){
 		$FieldsToValidate .= nl2br("'".$column."' => 'required|max:255', ");
- }
+ }   
 
  $FieldsToStore = "";
  foreach($tableFields as $column => $datatype){
 	$FieldsToStore .= nl2br(""."$"."data->".$column." = "."$"."request->".$column."; ");
 }
+
 
 $FieldsToUpdate = "";
 $FieldsToUpdate = "";
@@ -232,69 +273,68 @@ class ".$crudName."Controller extends Controller
       $ControllerFile = fopen($filePath, "w") or die("Unable to open file!");
 	    fwrite($ControllerFile, $controllerText);
       fclose($ControllerFile);
-	    $messages['Controlleroutput'] = "Controller Created Successfully";
+	    return "Controller Created Successfully";
 
-
+}
 
 /*|=============================================================================|
-  |                              Create  a Directory                            |
+  |                              Create  View Files                             |
   |=============================================================================|
 */
 
-  $viewdirectoryoutput = shell_exec('cd '.$basePath.'/resources/views'.' && mkdir '.$crudName.'s');
-  $messages['Viewdirectoryoutput'] = $viewdirectoryoutput;
+public function MakeViewsFiles($basePath, $tableFields, $crudName){
 
+// ----------------Create Directory 
+$viewdirectoryoutput = shell_exec('cd '.$basePath.'/resources/views'.' && mkdir '.$crudName.'s');
+$messages['Viewdirectoryoutput'] = $viewdirectoryoutput;
 
-/*|=============================================================================|
-  |                              Create  Index.blade.php                        |
-  |=============================================================================|
-*/
- $tableHeading = "";
-  foreach($tableFields as $column => $datatype){
-		   $tableHeading .= nl2br("<th scope='col'>".$column."</th>");
-	}
+// ----------------Create A Index.blade.php File
+$tableHeading = "";
+foreach($tableFields as $column => $datatype){
+     $tableHeading .= nl2br("<th scope='col'>".$column."</th>");
+}
 
-   $tableData = "";
-	foreach($tableFields as $column => $datatype){
-		    $tableData .= nl2br("<td>{{"."$"."value->".$column."}}</td>");
-    }
+ $tableData = "";
+foreach($tableFields as $column => $datatype){
+      $tableData .= nl2br("<td>{{ "."$"."value->".$column." }}</td>");
+  }
 
-$indexText = "
+$indexText ="
 <!-- Bootstrap 4.4 frameworked is used -->
 @extends('layouts.YourLayoutName')
 @section('content')
-  <h3 class='text-center'>List ".$crudName."s</h3>
-    @if(count($".$crudName."sDataForIndex) > 0 )
-		 <table class='table'>
-		 <thead>
-		   <tr>
-			 <th scope='col'>#</th>
-			 ".$tableHeading."
-			 <th scope='col'>Action</th>
-		   </tr>
-		 </thead>
-		 <tbody>
-		 @foreach($".$crudName."sDataForIndex as "."$"."key => "."$"."value)
-		   <tr>
-			 <th scope='row'>{{"."$"."loop->index+1}}</th>
-			 ".$tableData."
-			  <td>
-			    <a href='{{route('".$crudName.".show',"."$"."value->id )}}'>Show</a>
-			    <a href='{{route('".$crudName.".edit',"."$"."value->id )}}'>Edit</a>
-				<form action='{{ route('".$crudName.".destroy',"."$"."value->id ) }}' method='POST'>
-			    	@csrf
-				    @method('DELETE')
-				   <button class='btn btn-danger'>Delete</button>
-			   </form>
-			  </td>
-		   </tr>
-		   @endforeach		
-		 </tbody>         
-	   </table>
-	@else
-	     <h2 class='text-center'>No Data Found</h2>
-	@endif
-	   {{ $".$crudName."sDataForIndex->links() }}
+<h3 class='text-center'>List ".$crudName."s</h3>
+@if(count($".$crudName."sDataForIndex) > 0 )
+   <table class='table'>
+   <thead>
+     <tr>
+     <th scope='col'>#</th>
+     ".$tableHeading."
+     <th scope='col'>Action</th>
+     </tr>
+   </thead>
+   <tbody>
+@foreach($".$crudName."sDataForIndex as "."$"."key => "."$"."value)
+     <tr>
+     <th scope='row'>{{ "."$"."loop->index+1 }}</th>
+     ".$tableData."
+      <td>
+        <a href='{{ route('".$crudName.".show',"."$"."value->id ) }}'>Show</a>
+        <a href='{{ route('".$crudName.".edit',"."$"."value->id ) }}'>Edit</a>
+      <form action='{{ route('".$crudName.".destroy',"."$"."value->id ) }}' method='POST'>
+@csrf
+@method('DELETE')
+         <button class='btn btn-danger'>Delete</button>
+       </form>
+      </td>
+     </tr>
+@endforeach
+   </tbody>         
+   </table>
+@else
+     <h2 class='text-center'>No Data Found</h2>
+@endif
+   {{ $".$crudName."sDataForIndex->links() }}
 @endsection";
 
 $filePath = $basePath."/resources/views/".$crudName."s/index.blade.php";
@@ -302,55 +342,47 @@ $indexFile = fopen($filePath, "w") or die("Unable to open file!");
 fwrite($indexFile, $indexText);
 fclose($indexFile);
 
-$messages['Indexview'] = "resources/views/".$crudName."s/index.blade.php created successfully ";
 
 
-/*|=============================================================================|
-  |                              Create A Create.blade.php                      |
-  |=============================================================================|
-*/  
+// ----------------Create A Create.blade.php File
 
- $FormFields= "";
- foreach($tableFields as $column => $datatype){
-   $FormFields .= nl2br("<div class='form-group'><label for='".$column."label'>".$column."</label><input type='text' name='".$column."' class='form-control' id='".$column."label'></div>");
+$FormFields= "";
+foreach($tableFields as $column => $datatype){
+ $FormFields .= nl2br("<div class='form-group'><label for='".$column."label'>".$column."</label><input type='text' name='".$column."' class='form-control' id='".$column."label'></div>");
 }
 
 $createText = "
 @extends('layouts.YourLayoutName')
 @section('content')
- <h3 class='text-center'>Create ".$crudName."</h3>
- <hr/>
- <form method='post' action='{{route('".$crudName.".store')}}' enctype='multipart/form-data'>
-  @csrf
-   ".$FormFields."
-   <button type='submit' class='btn btn-primary'>Submit</button>
+<h3 class='text-center'>Create ".$crudName."</h3>
+<hr/>
+<form method='post' action='{{ route('".$crudName.".store') }}' enctype='multipart/form-data'>
+@csrf
+ ".$FormFields."
+ <button type='submit' class='btn btn-primary'>Submit</button>
 </form>
 @endsection";
-          
+        
 $filePath = $basePath."/resources/views/".$crudName."s/create.blade.php";
 $createFile = fopen($filePath, "w") or die("Unable to open file!");
 fwrite($createFile, $createText);
 fclose($createFile);
 
-$messages['Createview'] = "resources/views/".$crudName."s/create.blade.php created successfully ";
 
 
-/*|=============================================================================|
-  |                              Create Show.blade.php                          |
-  |=============================================================================|
-*/  
+// ----------------Create A Show.blade.php File
 
 $ShowData = "";
-    foreach($tableFields as $column => $datatype){
-		    $ShowData .= nl2br("{{ $"."show".$crudName."->".$column."}} ");
-    }
+  foreach($tableFields as $column => $datatype){
+      $ShowData .= nl2br("{{ $"."show".$crudName."->".$column." }} ");
+  }
 
 $showText = "
 @extends('layouts.YourLayoutName')
 @section('content')
-	<h3 class='text-center'>Show ".$crudName."</h3>
-	<hr/>
-    ".$ShowData."
+<h3 class='text-center'>Show ".$crudName."</h3>
+<hr/>
+  ".$ShowData."
 @endsection";
 
 $filePath = $basePath."/resources/views/".$crudName."s/show.blade.php";
@@ -361,28 +393,25 @@ fclose($showFile);
 $messages['Showview'] = "resources/views/".$crudName."s/show.blade.php created successfully ";
 
 
-/*|=============================================================================|
-  |                              Create Edit.blade.php                          |
-  |=============================================================================|
-*/
+// ----------------Create A Edit.blade.php File
 
 $editFields = "";
 foreach($tableFields as $column => $datatype){
-		    $editFields .= nl2br("<div class='form-group'><label for='".$column."label'>".$column."</label><input type='text' name='".$column."' value='{{"."$"."edit".$crudName."->".$column."}}' class='form-control' id='".$column."label'></div>");
+      $editFields .= nl2br("<div class='form-group'><label for='".$column."label'>".$column."</label><input type='text' name='".$column."' value='{{ "."$"."edit".$crudName."->".$column." }}' class='form-control' id='".$column."label'></div>");
 }
 
 $editText = "
 @extends('layouts.YourLayoutName')
 @section('content')
-  <h3 class='text-center'>Edit ".$crudName."</h3>
-  <hr/>
-  <form method='post' action='{{route('".$crudName.".update', "."$"."edit".$crudName."->id )}}' enctype='multipart/form-data'>
-   @csrf
-   @method('PUT')
+<h3 class='text-center'>Edit ".$crudName."</h3>
+<hr/>
+<form method='post' action='{{ route('".$crudName.".update', "."$"."edit".$crudName."->id ) }}' enctype='multipart/form-data'>
+@csrf
+@method('PUT')
 
-	".$editFields."
-    <button type='submit' class='btn btn-primary'>Submit</button>
-  </form>
+".$editFields."
+  <button type='submit' class='btn btn-primary'>Submit</button>
+</form>
 @endsection";
 
 $filePath = $basePath."/resources/views/".$crudName."s/edit.blade.php";
@@ -390,23 +419,26 @@ $editFile = fopen($filePath, "w") or die("Unable to open file!");
 fwrite($editFile, $editText);
 fclose($editFile);
 
-$messages['Editview'] = "resources/views/".$crudName."s/edit.blade.php created successfully";
-
-/*|=============================================================================|
-  |                              Create A Route                                 |
-  |=============================================================================|
-*/
-  
-  $route = "Route::resource('".$crudName."',".$crudName."Controller::class);".PHP_EOL;
-  $filePath = $basePath."/routes/web.php";
-  $routeFile = fopen($filePath, "a") or die("Unable to open file!");
-  fwrite($routeFile, $route);
-  fclose($routeFile);
-  
-  $messages['RouteMessage'] = "Route Generated !";
-  $messages['Route'] = "Your Route ||  " .$route . "  ||";
-
-  return view('crud::createCrud', ['messages' => $messages ] );
+return "resources/views/".$crudName."s/ Index,Create,Show,Edit Files Created";
 
 }
+
+ /*|=============================================================================|
+   |                              Create A Route                                 |
+   |=============================================================================|
+*/
+
+
+public function MakeRoute($basePath, $crudName){
+
+$route = " use App\Http\Controllers\ ".$crudName."Controller;".PHP_EOL."Route::resource('".$crudName."',".$crudName."Controller::class);".PHP_EOL;
+$filePath = $basePath."/routes/web.php";
+$routeFile = fopen($filePath, "a") or die("Unable to open file!");
+fwrite($routeFile, $route);
+fclose($routeFile);
+
+return  "Route Generated !" . $route;
+
+}
+
 }
