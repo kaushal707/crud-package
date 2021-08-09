@@ -8,8 +8,9 @@ This package provides a super easy way to make a laravel crud opration.
 * It Runs the migration of specific table .
 * It Creates resource controller with all functionallity .
 * It Creates view files Index.blade.php, Create.blade.php, show.blade.php, edit.blade.php .
-* Laravel 7 and higher
-* PHP 7.3 and higher.
+* It Can work with both existing and new project .
+* Laravel 7.x and higher
+* PHP 7.0 and higher.
 
 
 ## Support
@@ -35,12 +36,20 @@ Add the Service Provider  to your ```app.php``` config file if you're not using 
 'providers' => [
     ...
 
-    Kaushal\Crud\CrudServiceProvider::class,
+    Kaushalmaurya\Crud\CrudServiceProvider::class,
     ...
 ];
 
 
 ```
+## Exicution
+* Connect to a database
+* Run the server 
+* Type in the url [127.0.0.1:8000/crud]
+* And you will get this below interface .
+
+
+![](images/crudform.png)
 
 ## License
 

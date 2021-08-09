@@ -35,14 +35,14 @@
                         <input type="text" name="crudName" id="" class="form-control" required maxlength="20">
                     </div>
                     <div class="form-group">
-                        <label for="">Enter Fields & Datatyped Seperate By Comma <span class="text-danger">(<i> Example:
+                        <label for="">Enter Fields#Datatyped Seperate By Comma <span class="text-danger">(<i> Example:
                                     name#string, age#Integer, year#date </i>)</span></label>
                         <input type="text" name="fields" id="" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label for="">Run Migration ? <span class="text-danger"> * </span></label>
                         <br>
-                        <input type="radio" id="html" name="run_migration" value="1">
+                        <input type="radio" id="html" name="run_migration" value="1" checked>
                         <label for="html">Yes</label>
                         <input type="radio" id="css" name="run_migration" value="0">
                         <label for="css">No</label>
