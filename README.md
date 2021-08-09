@@ -15,7 +15,7 @@ This package provides a super easy way to make a laravel crud opration.
 
 ## Support
 
-We proudly support the community by developing Laravel packages and giving them away for free. Keeping track of issues and pull requests takes time, but we're happy to help!
+We proudly support the community by developing Laravel packages and giving them away for free. Keeping track of issues and pull requests takes time, but we're happy to help! any issue please feel free to DM on instagram @thisiskaushalmaurya
 
 ## Installation
 
@@ -42,14 +42,30 @@ Add the Service Provider  to your ```app.php``` config file if you're not using 
 
 
 ```
-## Exicution
+## Execution
 * Connect to a database
 * Run the server 
 * Type in the url [127.0.0.1:8000/crud]
-* And you will get this below interface .
+* And you will get this form  below and enter the fields .
+
+![](images/form.png)
 
 
-![](images/crudform.png)
+Once Done Hit on submit you will get output 
+
+![](images/output.png)
+
+Go to the view file and set your project layout
+
+![](images/setlayout.png)
+
+Now go the web.php and copy the route and enter in the url
+
+![](images/web.png)
+
+Yes.. its done ! now you can you can perform basic crud opration.
+![](images/index.png)
+![](images/create.png)
 
 ## License
 
